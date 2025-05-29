@@ -1,0 +1,672 @@
+import React, { useState, useRef, useEffect } from "react";
+
+const yogaTips = [
+  "Try 5 minutes of child's pose to unwind.",
+  "Do a gentle forward fold before bed.",
+  "Stretch your arms and back every morning.",
+  "Try a few rounds of sun salutations.",
+  "Practice deep breathing for 3 minutes."
+];
+
+const friendList = [
+  { name: "Alex", goal: "Daily walk", events: ["Go for a walk", "Yoga class"] },
+  { name: "Jamie", goal: "Eat healthy", events: ["Meal prep", "Salad lunch"] },
+  { name: "Morgan", goal: "Stretch every evening", events: ["Stretching"] }
+];
+
+// Background themes for customization
+const backgroundThemes = [
+  { name: "Ocean", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
+  { name: "Sunset", gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" },
+  { name: "Forest", gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" },
+  { name: "Mountain", gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" },
+  { name: "Space", gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)" }
+];
+
+function TabBar({ page, setPage }) {
+  const tabs = ["Calendar", "Habits", "Overview", "Recap", "Friends", "Connect", "Settings"];
+  return (
+    <div style={{
+      display: "flex", gap: 8, background: "#f1f2f6", padding: 12,
+      borderRadius: 10, marginBottom: 24, fontWeight: 500, flexWrap: "wrap"
+    }}>
+      {tabs.map(t => (
+        <button key={t}
+          style={{
+            background: page === t ? "#2ecc40" : "#fff",
+            color: page === t ? "#fff" : "#333",
+            border: "none", borderRadius: 6, padding: "7px 20px", cursor: "pointer"
+          }}
+          onClick={() => setPage(t)}
+        >{t}</button>
+      ))}
+    </div>
+  );
+}
+
+// Fixed Music Player with better tone generator
+function MusicPlayer({ musicEnabled, setMusicEnabled }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioContextRef = useRef(null);
+  const oscillatorRef = useRef(null);
+
+  const createAmbientTone = () => {
+    if (!musicEnabled) return;
+    
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const audioContext = new AudioContext();
+      
+      // Create multiple oscillators for a richer sound
+      const osc1 = audioContext.createOscillator();
+      const osc2 = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Set frequencies for peaceful ambient sound
+      osc1.frequency.setValueAtTime(220, audioContext.currentTime); // A3
+      osc2.frequency.setValueAtTime(330, audioContext.currentTime); // E4
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      
+      // Very low volume for ambient effect
+      gainNode.gain.setValueAtTime(0.02, audioContext.currentTime);
+      
+      osc1.start();
+      osc2.start();
+      
+      audioContextRef.current = audioContext;
+      oscillatorRef.current = [osc1, osc2];
+      setIsPlaying(true);
+    } catch (error) {
+      console.log("Audio not supported");
+    }
+  };
+
+  const stopAmbientTone = () => {
+    if (oscillatorRef.current) {
+      oscillatorRef.current.forEach(osc => osc.stop());
+      oscillatorRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    setIsPlaying(false);
+  };
+
+  const toggleMusic = () => {
+    if (!musicEnabled) return;
+    
+    if (isPlaying) {
+      stopAmbientTone();
+    } else {
+      createAmbientTone();
+    }
+  };
+
+  return (
+    <div style={{ 
+      position: "fixed", 
+      bottom: 20, 
+      right: 20, 
+      background: "#2c3e50", 
+      borderRadius: 50, 
+      padding: 15,
+      boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+      zIndex: 1000,
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }}>
+      <button
+        onClick={toggleMusic}
+        disabled={!musicEnabled}
+        style={{
+          background: "none",
+          border: "none",
+          color: musicEnabled ? "#fff" : "#666",
+          fontSize: 20,
+          cursor: musicEnabled ? "pointer" : "not-allowed"
+        }}
+        title={musicEnabled ? (isPlaying ? "Stop Ambient Sound" : "Play Ambient Sound") : "Enable music in settings"}
+      >
+        {isPlaying ? "🔇" : "🎵"}
+      </button>
+      {musicEnabled && (
+        <div style={{ color: "#fff", fontSize: 12 }}>
+          {isPlaying ? "Ambient" : "Quiet"}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Fixed Swipe Screen with theme selection
+function SwipeScreen({ isVisible, onClose, habits, goals, selectedTheme }) {
+  if (!isVisible) return null;
+
+  const completedHabits = habits.filter(h => h.done).length;
+  const habitStreak = Math.floor(Math.random() * 15) + 1;
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+      background: selectedTheme?.gradient || backgroundThemes[0].gradient,
+      backgroundSize: "cover", backgroundPosition: "center",
+      display: "flex", flexDirection: "column", justifyContent: "center",
+      alignItems: "center", color: "#fff", zIndex: 2000,
+      textAlign: "center"
+    }}>
+      <div style={{
+        background: "rgba(0,0,0,0.6)", borderRadius: 16, padding: 32,
+        backdropFilter: "blur(10px)"
+      }}>
+        <h2 style={{ marginBottom: 24 }}>Your Progress</h2>
+        
+        <div style={{ marginBottom: 20 }}>
+          <h3>Current Goal: {goals.title || "Japan Trip"}</h3>
+          <div style={{ 
+            background: "rgba(255,255,255,0.2)", borderRadius: 20, height: 8, marginTop: 8 
+          }}>
+            <div style={{
+              background: "#2ecc40", height: "100%", borderRadius: 20,
+              width: `${goals.progress || 50}%`
+            }}></div>
+          </div>
+          <p>{goals.progress || 50}% of ${goals.target || "10,000"} saved!</p>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <h4>Habit Streak: {habitStreak} days 🔥</h4>
+          <p>Completed {completedHabits} habits today</p>
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{
+            background: "rgba(255,255,255,0.2)", border: "2px solid #fff",
+            color: "#fff", borderRadius: 25, padding: "10px 20px",
+            cursor: "pointer", fontSize: 16
+          }}
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Enhanced Habit Tracker with daily/weekly/monthly sections
+function HabitTracker({ habits, setHabits }) {
+  const [text, setText] = useState("");
+  const [habitType, setHabitType] = useState("daily");
+
+  const resetHabits = () => {
+    if (confirm("Are you sure you want to reset all habits? This cannot be undone.")) {
+      setHabits([]);
+    }
+  };
+
+  const addHabit = () => {
+    if (text.trim()) {
+      setHabits([...habits, { name: text, done: false, type: habitType }]);
+      setText("");
+    }
+  };
+
+  const dailyHabits = habits.filter(h => h.type === "daily");
+  const weeklyHabits = habits.filter(h => h.type === "weekly");
+  const monthlyHabits = habits.filter(h => h.type === "monthly");
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px #eee", maxWidth: 600 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={{ fontWeight: 700 }}>Habit Tracker</h2>
+        <button
+          onClick={resetHabits}
+          style={{ 
+            background: "#e74c3c", color: "#fff", border: "none", 
+            borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 12 
+          }}
+        >
+          Reset All
+        </button>
+      </div>
+      
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <input
+          placeholder="Add a habit"
+          style={{ flex: 1, padding: 8, borderRadius: 5, border: "1px solid #ccc" }}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyPress={e => e.key === 'Enter' && addHabit()}
+        />
+        <select 
+          value={habitType} 
+          onChange={e => setHabitType(e.target.value)}
+          style={{ padding: 8, borderRadius: 5, border: "1px solid #ccc" }}
+        >
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        <button
+          style={{ padding: "8px 16px", borderRadius: 5, background: "#2ecc40", color: "#fff", border: "none", cursor: "pointer" }}
+          onClick={addHabit}
+        >Add</button>
+      </div>
+
+      {/* Daily Habits Section */}
+      <div style={{ marginBottom: 20 }}>
+        <h3 style={{ color: "#2ecc40", marginBottom: 8 }}>Daily Habits</h3>
+        {dailyHabits.length === 0 ? (
+          <p style={{ color: "#999", fontStyle: "italic" }}>No daily habits yet</p>
+        ) : (
+          <ul style={{ padding: 0, listStyle: "none" }}>
+            {dailyHabits.map((h, i) => (
+              <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+                <input
+                  type="checkbox"
+                  checked={h.done}
+                  onChange={() => setHabits(habits.map((v, idx) => 
+                    v === h ? { ...v, done: !v.done } : v
+                  ))}
+                />
+                <span style={{ textDecoration: h.done ? "line-through" : "none", color: h.done ? "#aaa" : "#222" }}>
+                  {h.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Weekly Habits Section */}
+      <div style={{ marginBottom: 20 }}>
+        <h3 style={{ color: "#3498db", marginBottom: 8 }}>Weekly Habits</h3>
+        {weeklyHabits.length === 0 ? (
+          <p style={{ color: "#999", fontStyle: "italic" }}>No weekly habits yet</p>
+        ) : (
+          <ul style={{ padding: 0, listStyle: "none" }}>
+            {weeklyHabits.map((h, i) => (
+              <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+                <input
+                  type="checkbox"
+                  checked={h.done}
+                  onChange={() => setHabits(habits.map((v, idx) => 
+                    v === h ? { ...v, done: !v.done } : v
+                  ))}
+                />
+                <span style={{ textDecoration: h.done ? "line-through" : "none", color: h.done ? "#aaa" : "#222" }}>
+                  {h.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Monthly Habits Section */}
+      <div>
+        <h3 style={{ color: "#9b59b6", marginBottom: 8 }}>Monthly Habits</h3>
+        {monthlyHabits.length === 0 ? (
+          <p style={{ color: "#999", fontStyle: "italic" }}>No monthly habits yet</p>
+        ) : (
+          <ul style={{ padding: 0, listStyle: "none" }}>
+            {monthlyHabits.map((h, i) => (
+              <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+                <input
+                  type="checkbox"
+                  checked={h.done}
+                  onChange={() => setHabits(habits.map((v, idx) => 
+                    v === h ? { ...v, done: !v.done } : v
+                  ))}
+                />
+                <span style={{ textDecoration: h.done ? "line-through" : "none", color: h.done ? "#aaa" : "#222" }}>
+                  {h.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Enhanced Settings with health features and theme selection
+function Settings({ 
+  musicEnabled, setMusicEnabled, goals, setGoals, 
+  healthEnabled, setHealthEnabled, selectedTheme, setSelectedTheme 
+}) {
+  return (
+    <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
+      <h2 style={{ fontWeight: 700 }}>Settings</h2>
+      
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={musicEnabled}
+            onChange={e => setMusicEnabled(e.target.checked)}
+          />
+          Enable Ambient Background Music
+        </label>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={healthEnabled}
+            onChange={e => setHealthEnabled(e.target.checked)}
+          />
+          Enable Health Features (Yoga, Stretching, etc.)
+        </label>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ marginBottom: 8 }}>Progress Screen Theme</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 }}>
+          {backgroundThemes.map((theme, i) => (
+            <button
+              key={i}
+              onClick={() => setSelectedTheme(theme)}
+              style={{
+                background: theme.gradient,
+                border: selectedTheme?.name === theme.name ? "3px solid #333" : "1px solid #ccc",
+                borderRadius: 8,
+                padding: 12,
+                color: "#fff",
+                cursor: "pointer",
+                textShadow: "1px 1px 2px rgba(0,0,0,0.7)"
+              }}
+            >
+              {theme.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ marginBottom: 8 }}>Goal Settings</h3>
+        <input
+          placeholder="Goal title (e.g., Japan Trip)"
+          style={{ width: "100%", padding: 8, borderRadius: 5, border: "1px solid #ccc", marginBottom: 8 }}
+          value={goals.title || ""}
+          onChange={e => setGoals(prev => ({ ...prev, title: e.target.value }))}
+        />
+        <input
+          type="number"
+          placeholder="Target amount"
+          style={{ width: "100%", padding: 8, borderRadius: 5, border: "1px solid #ccc", marginBottom: 8 }}
+          value={goals.target || ""}
+          onChange={e => setGoals(prev => ({ ...prev, target: e.target.value }))}
+        />
+        <input
+          type="number"
+          placeholder="Current progress %"
+          min="0"
+          max="100"
+          style={{ width: "100%", padding: 8, borderRadius: 5, border: "1px solid #ccc" }}
+          value={goals.progress || ""}
+          onChange={e => setGoals(prev => ({ ...prev, progress: Math.min(100, Math.max(0, e.target.value)) }))}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Simple Calendar (keeping it concise)
+function Calendar({ events, setEvents }) {
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = now.toLocaleString("default", { month: "long" });
+  const todayISO = new Date().toISOString().slice(0, 10);
+
+  const days = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    days.push(date);
+  }
+
+  const addEvent = (date) => {
+    const title = prompt("Event title?");
+    if (!title) return;
+    
+    setEvents(evts => ({
+      ...evts,
+      [date]: [...(evts[date] || []), { title, description: "" }]
+    }));
+  };
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px #eee" }}>
+      <h2 style={{ fontWeight: 700, marginBottom: 16 }}>{monthName} {year}</h2>
+      
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          <div style={{ fontWeight: 600, textAlign: "center", padding: 8 }} key={d}>{d}</div>
+        ))}
+        {Array(new Date(year, month, 1).getDay()).fill().map((_, i) => (
+          <div key={`empty-${i}`}></div>
+        ))}
+        {days.map(date => (
+          <div 
+            key={date} 
+            style={{ 
+              border: "1px solid #f0f0f0", borderRadius: 6, minHeight: 70, padding: 4,
+              cursor: "pointer", background: date === todayISO ? "#e3f2fd" : "#fff"
+            }}
+            onClick={() => addEvent(date)}
+          >
+            <div style={{ 
+              fontWeight: date === todayISO ? 700 : 400, 
+              color: date === todayISO ? "#3498db" : "#444",
+              marginBottom: 4
+            }}>
+              {parseInt(date.split("-")[2])}
+            </div>
+            {(events[date] || []).slice(0, 2).map((ev, i) =>
+              <div key={i} style={{ 
+                fontSize: 11, background: "#f3f8ff", margin: "2px 0", 
+                borderRadius: 3, padding: "2px 4px"
+              }}>
+                {ev.title}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Keep other components simple
+function Overview({ events, habits, healthEnabled }) {
+  let allEvents = [];
+  Object.entries(events).forEach(([date, arr]) => {
+    arr.forEach(ev => allEvents.push({ ...ev, date }));
+  });
+  
+  return (
+    <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 8px #eee" }}>
+      <h2 style={{ fontWeight: 700, marginBottom: 16 }}>Overview</h2>
+      
+      <div style={{ marginBottom: 18 }}>
+        <strong>Events this month: {allEvents.length}</strong>
+      </div>
+      
+      <div style={{ marginBottom: 18 }}>
+        <strong>Habits completed: {habits.filter(h => h.done).length} / {habits.length}</strong>
+      </div>
+      
+      {healthEnabled && (
+        <div style={{ background: "#e8fff4", borderRadius: 8, padding: 12 }}>
+          <strong>Daily Wellness Tip:</strong>
+          <div style={{ marginTop: 5 }}>{yogaTips[Math.floor(Math.random() * yogaTips.length)]}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Recap({ events, habits, healthEnabled }) {
+  const habitsDone = habits.filter(h => h.done).length;
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 8px #eee", maxWidth: 480 }}>
+      <h2 style={{ fontWeight: 700 }}>Weekly Recap</h2>
+      <div style={{ margin: "18px 0" }}>
+        <div>You finished <b>{habitsDone}</b> habit{habitsDone !== 1 ? "s" : ""}.</div>
+      </div>
+      
+      {healthEnabled && (
+        <div style={{ background: "#e8fff4", borderRadius: 8, padding: 12 }}>
+          <b>Yoga/stretch suggestion:</b>
+          <div style={{ marginTop: 5 }}>{yogaTips[Math.floor(Math.random() * yogaTips.length)]}</div>
+        </div>
+      )}
+      
+      <div style={{ marginTop: 20, color: "#666" }}>
+        <b>Recommendation:</b>
+        <div>
+          {habitsDone === 0
+            ? "Try to focus on a small, simple habit this week."
+            : "Great job! Keep up your routines and consider inviting a friend for accountability."}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Friends({ friends }) {
+  return (
+    <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 8px #eee", maxWidth: 420 }}>
+      <h2 style={{ fontWeight: 700 }}>Friends</h2>
+      <ul style={{ padding: 0, listStyle: "none" }}>
+        {friends.length === 0 && <li>No friends yet. Add some on Connect!</li>}
+        {friends.map((f, i) =>
+          <li key={i} style={{ margin: "10px 0", padding: 10, background: "#f8f9fa", borderRadius: 6 }}>
+            <b>{f.name}</b> — goal: <i>{f.goal}</i>
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function Connect({ friends, setFriends }) {
+  const [msg, setMsg] = useState("");
+  const available = friendList.filter(f => !friends.find(fr => fr.name === f.name));
+  
+  function addFriend(f) {
+    setFriends([...friends, f]);
+    setMsg(`You are now connected with ${f.name}!`);
+    setTimeout(() => setMsg(""), 2000);
+  }
+  
+  return (
+    <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 8px #eee", maxWidth: 420 }}>
+      <h2 style={{ fontWeight: 700 }}>Connect</h2>
+      <div style={{ margin: "14px 0" }}>
+        Find an accountability buddy:
+        <ul style={{ padding: 0, listStyle: "none" }}>
+          {available.length === 0 && <li>All available buddies added!</li>}
+          {available.map((f, i) =>
+            <li key={i} style={{ margin: "8px 0", display: "flex", alignItems: "center", gap: 8, padding: 8, background: "#f8f9fa", borderRadius: 6 }}>
+              <div>
+                <b>{f.name}</b> — goal: <i>{f.goal}</i>
+              </div>
+              <button
+                style={{ marginLeft: "auto", background: "#2d9cdb", color: "#fff", border: "none", borderRadius: 5, padding: "6px 12px", cursor: "pointer" }}
+                onClick={() => addFriend(f)}
+              >Connect</button>
+            </li>
+          )}
+        </ul>
+        {msg && <div style={{ color: "#27ae60", marginTop: 10, fontWeight: 500 }}>{msg}</div>}
+      </div>
+    </div>
+  );
+}
+
+// Main App
+export default function App() {
+  const [page, setPage] = useState("Calendar");
+  const [events, setEvents] = useState({});
+  const [habits, setHabits] = useState([]);
+  const [friends, setFriends] = useState([]);
+  const [musicEnabled, setMusicEnabled] = useState(false);
+  const [healthEnabled, setHealthEnabled] = useState(false);
+  const [goals, setGoals] = useState({ title: "Japan Trip", target: "10000", progress: 50 });
+  const [selectedTheme, setSelectedTheme] = useState(backgroundThemes[0]);
+  const [showSwipeScreen, setShowSwipeScreen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSwipeScreen(true), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div style={{ fontFamily: "system-ui,sans-serif", background: "#f5f7fa", minHeight: "100vh", padding: 24 }}>
+      <div style={{ maxWidth: 1200, margin: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h1 style={{ margin: 0, color: "#2c3e50" }}>Wellness Tracker</h1>
+          <button
+            onClick={() => setShowSwipeScreen(true)}
+            style={{
+              background: selectedTheme.gradient,
+              color: "#fff", border: "none", borderRadius: 20,
+              padding: "8px 16px", cursor: "pointer", fontSize: 14
+            }}
+          >
+            🎯 Progress
+          </button>
+        </div>
+        
+        <TabBar page={page} setPage={setPage} />
+        
+        <div style={{ minHeight: 480 }}>
+          {page === "Calendar" && <Calendar events={events} setEvents={setEvents} />}
+          {page === "Habits" && <HabitTracker habits={habits} setHabits={setHabits} />}
+          {page === "Overview" && <Overview events={events} habits={habits} healthEnabled={healthEnabled} />}
+          {page === "Recap" && <Recap events={events} habits={habits} healthEnabled={healthEnabled} />}
+          {page === "Friends" && <Friends friends={friends} />}
+          {page === "Connect" && <Connect friends={friends} setFriends={setFriends} />}
+          {page === "Settings" && (
+            <Settings 
+              musicEnabled={musicEnabled}
+              setMusicEnabled={setMusicEnabled}
+              goals={goals}
+              setGoals={setGoals}
+              healthEnabled={healthEnabled}
+              setHealthEnabled={setHealthEnabled}
+              selectedTheme={selectedTheme}
+              setSelectedTheme={setSelectedTheme}
+            />
+          )}
+        </div>
+      </div>
+      
+      <MusicPlayer musicEnabled={musicEnabled} setMusicEnabled={setMusicEnabled} />
+      
+      <SwipeScreen 
+        isVisible={showSwipeScreen}
+        onClose={() => setShowSwipeScreen(false)}
+        habits={habits}
+        goals={goals}
+        selectedTheme={selectedTheme}
+      />
+    </div>
+  );
+}
